@@ -15,8 +15,8 @@ class CreateMediaTags extends Migration
     {
         Schema::create('media_tags', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->integer ('idMedia')->unsigned ();
-            $table->integer('idTag')->unsigned ();
+            $table->integer('idMedia')->unsigned();
+            $table->integer('idTag')->unsigned();
             $table->timestamps();
         });
     }

@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 class UpdateMediatags extends Migration
@@ -13,7 +12,7 @@ class UpdateMediatags extends Migration
      */
     public function up()
     {
-        Schema::table('media_tags', function($table) {
+        Schema::table('media_tags', function ($table) {
             $table->float('Confidence');
         });
     }
@@ -25,7 +24,7 @@ class UpdateMediatags extends Migration
      */
     public function down()
     {
-        Schema::table('media_tags', function($table) {
+        Schema::table('media_tags', function ($table) {
             $table->dropColumn('Confidence');
         });
     }

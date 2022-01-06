@@ -14,12 +14,11 @@ class CreateMedia extends Migration
     public function up()
     {
         Schema::create('media', function (Blueprint $table) {
-
             $table->bigIncrements('id');
-            $table->integer ('idUser');
-            $table->char ('uuidImage',255);
-            $table->char('fileName',255);
-            $table->char('type',20);
+            $table->integer('idUser');
+            $table->char('uuidImage', 255);
+            $table->char('fileName', 255);
+            $table->char('type', 20);
             $table->timestamps();
         });
     }

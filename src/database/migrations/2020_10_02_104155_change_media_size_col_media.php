@@ -13,8 +13,8 @@ class ChangeMediaSizeColMedia extends Migration
      */
     public function up()
     {
-        Schema::table ('media', function (Blueprint $table) {
-            $table->float ('size',15,2)->change();
+        Schema::table('media', function (Blueprint $table) {
+            $table->float('size', 15, 2)->change();
         });
     }
 

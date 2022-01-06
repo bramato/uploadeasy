@@ -13,8 +13,8 @@ class UpdateMediaDimension extends Migration
      */
     public function up()
     {
-        Schema::table ('media', function (Blueprint $table) {
-            $table->float ('size')->after ('type')->default ('0');
+        Schema::table('media', function (Blueprint $table) {
+            $table->float('size')->after('type')->default('0');
         });
     }
 
@@ -25,8 +25,8 @@ class UpdateMediaDimension extends Migration
      */
     public function down()
     {
-        Schema::table ('media', function (Blueprint $table) {
-            $table->dropColumn ('size');
+        Schema::table('media', function (Blueprint $table) {
+            $table->dropColumn('size');
         });
     }
 }

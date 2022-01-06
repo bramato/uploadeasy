@@ -2,9 +2,9 @@
 
 namespace Bramato\Uploadeasy\Tests;
 
+use Bramato\Uploadeasy\UploadeasyServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use Bramato\Uploadeasy\UploadeasyServiceProvider;
 
 class TestCase extends Orchestra
 {

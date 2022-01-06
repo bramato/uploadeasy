@@ -2,9 +2,9 @@
 
 namespace Bramato\Uploadeasy;
 
+use Bramato\Uploadeasy\Commands\UploadeasyCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use Bramato\Uploadeasy\Commands\UploadeasyCommand;
 
 class UploadeasyServiceProvider extends PackageServiceProvider
 {

@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 class UpdateMedia extends Migration
@@ -13,7 +12,7 @@ class UpdateMedia extends Migration
      */
     public function up()
     {
-        Schema::table('media', function($table) {
+        Schema::table('media', function ($table) {
             $table->char('thumbs')->after('type');
             $table->char('med')->after('type');
             $table->char('lit')->after('type');
@@ -27,7 +26,7 @@ class UpdateMedia extends Migration
      */
     public function down()
     {
-        Schema::table('media', function($table) {
+        Schema::table('media', function ($table) {
             $table->dropColumn('thumbs');
             $table->dropColumn('med');
             $table->dropColumn('lit');
