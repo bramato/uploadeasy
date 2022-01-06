@@ -18,9 +18,11 @@
     "require": {
         "php": "^7.4|^8.0",
         "aws/aws-sdk-php": "^3.208",
+        "eddturtle/direct-upload": "^3.0",
         "illuminate/contracts": "^8.73",
         "intervention/image": "^2.7",
-        "spatie/laravel-package-tools": "^1.9.2"
+        "spatie/laravel-package-tools": "^1.9.2",
+        "webpatser/laravel-uuid": "^4.0"
     },
     "require-dev": {
         "nunomaduro/collision": "^5.10",

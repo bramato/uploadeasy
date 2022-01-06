@@ -6,6 +6,7 @@ use Aws\Credentials\Credentials;
 use Aws\ElasticTranscoder\ElasticTranscoderClient;
 use Aws\Rekognition\RekognitionClient;
 use Composer\Command\ValidateCommand;
+use EddTurtle\DirectUpload\Signature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
@@ -17,16 +18,22 @@ use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Facades\Image;
 use Webpatser\Uuid\Uuid;
 
+use function Pest\Laravel\get;
+
 class Uploadeasy
 {
-    public function form($id, Request $req)
+    public function form($id,bool $form = false, Request $req)
     {
         App::setLocale(Auth::user()->lingua);
         $search = '';
         if (strlen($req->input('search')) > 3) {
             $search = $req->input('search');
         }
-        $aws = aws_form();
+        $cropType=$req->query('cropType');
+        $cropWidth=$req->query('cropWidth');
+        $cropHeight=$req->query('cropHeight');
+
+        $aws = self::aws_form();
         $url = $aws['url'];
         $inputs = $aws['inputsHTML'];
         $uuid = Uuid::generate()->string;
@@ -39,7 +46,10 @@ class Uploadeasy
         }
         $data = compact('url', 'inputs', 'uuid', 'id', 'images');
 
-        return response()->json($data);
+        if($form===false){
+            return response()->json($data);
+        }
+        return view ('uploadform',compact ('url','inputs','uuid','id','images','cropHeight','cropType','cropWidth'));
     }
 
     public function show($id)
@@ -387,24 +397,24 @@ class Uploadeasy
         return response()->json($listMedia);
     }
 
-    public function avatar($id, $size = 256)
+    static function avatar($id, $size = 256)
     {
-        return Redirect::to(getImgPng($id, 256));
+        return Redirect::to(self::getImgPng($id, 256));
     }
 
-    public function bravatar($id, $size = 256)
+    static function bravatar($id, $size = 256)
     {
         return Redirect::to('https://bramatar.com/avatar/palace/'.$size.'/'.$id.'.png');
     }
 
-    public function cover($id, $width = 1300, $r = 0.5)
+    static function cover($id, $width = 1300, $r = 0.5)
     {
-        return Redirect::to(getCoverJpg($id, $width, $r));
+        return Redirect::to(self::getCoverJpg($id, $width, $r));
     }
 
-    public function aws()
+    static function aws()
     {
-        $aws = aws_form();
+        $aws = self::aws_form();
         $uuid = Uuid::generate()->string;
 
         return response()->json(compact('aws', 'uuid'));
@@ -429,7 +439,7 @@ class Uploadeasy
         $return['url'] = $url;
         $return['uuid'] = $uuid;
         $return['tags'] = $tags;
-        $media = new \App\models\media();
+        $media = new media();
         $media->uuidMedia = $uuid;
         $media->type = $type;
         $media->size = $size;
@@ -568,4 +578,56 @@ class Uploadeasy
 
         return Response::json($file);
     }
+
+    static function getUrlImage($id,$command='/-/'){
+        $image = new self();
+        $image->get(['id'=>$id,'command'=>$command],true);
+    }
+    static function getIconJpg($id,$bg='ffffff'){
+        return self::getUrlImage($id,'/-/scale_crop/80x80/-/setfill/'.$bg.'/-/format/jpeg/');
+    }
+    static function getIconPng($id,$size=126){
+        return self::getUrlImage($id,'/-/scale_crop/'.$size.'x'.$size.'/-/format/png/');
+    }
+    static function getImgPng($id,$size=126){
+        return self::getUrlImage($id,'/-/resize/'.$size.'/-/format/png/');
+    }
+    static function getCoverJpg($id,$x=400,$r=0.5,$command=['grayscale'=>false]){
+        $y= (int)($x * $r);
+        $commandUrl='/-/scale_crop/'.$x.'x'.$y.'/center/-/format/jpg/';
+        if($command['grayscale']){
+            $commandUrl=$commandUrl.'-/grayscale/';
+        }
+        return self::getUrlImage($id,$commandUrl);
+    }
+
+    /**
+     * @param $image
+     * @return array|mixed|string|string[]
+     */
+    static function clearIdImage($image){
+        $tmp=explode('/-/',$image);
+        $img=$tmp[0];
+        $img= str_replace(array('https://www.procedeasy.com/image/','http://127.0.0.1:8000/image/','/'), '', $img);
+        return $img;
+    }
+
+    /**
+     * @return array
+     */
+    static function aws_form(){
+        $disk = config('uploadeasy.image_disk');
+        $upload = new Signature(
+            config('filesystems.disks.'. $disk .'.key'),
+            config ('filesystems.disks.'. $disk .'.secret'),
+            config('filesystems.disks.'. $disk .'.bucket'),
+            config('filesystems.disks.'. $disk .'.region'),
+            ['acl' => 'public-read']
+        );
+        $url=$upload->getFormUrl();
+        $inputsHTML=$upload->getFormInputsAsHtml();
+        $inputs=$upload->getFormInputs();
+        return ['url'=>$url, 'inputsHTML'=>$inputsHTML, 'inputs'=>$inputs,'AWSAccessKeyId'=>config('filesystems.disks.'. $disk .'.key'),'bucket'=>config('filesystems.disks.'. $disk .'.bucket')];
+    }
+
 }
