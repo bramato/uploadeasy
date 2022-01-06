@@ -2,15 +2,64 @@
 
 namespace Bramato\Uploadeasy;
 
+use App\models\files;
+use App\models\mediaTags;
+use App\models\tags;
 use Aws\Credentials\Credentials;
+use Aws\ElasticTranscoder\ElasticTranscoderClient;
 use Aws\Rekognition\RekognitionClient;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Facades\Image;
+use Webpatser\Uuid\Uuid;
 
 class Uploadeasy
 {
+    function form($id, Request $req){
+        App::setLocale (Auth::user()->lingua);
+        $search='';
+        if(strlen ($req->input('search'))>3){
+            $search=$req->input('search');
+        }
+        $aws= aws_form ();
+        $url=$aws['url'];
+        $inputs=$aws['inputsHTML'];
+        $uuid = Uuid::generate()->string;
+        $media = new \App\models\media();
+
+        if(strlen ($search)>3){
+            $images = $media->userId(Auth::id())->search($search)->type('img')->paginate(18);
+        }else{
+            $images = $media->userId(Auth::id())->type('img')->paginate(18);
+        }
+        $data=compact('url','inputs','uuid','id','images');
+        return response()->json ($data);
+    }
+
+
+    function show($id){
+        $s3 = Storage::disk('s3');
+        $files=$s3->allFiles(config('filesystems.disks.s3.dir').$id);
+        $media=config('services.urlPath.s3root').$files[0];
+        return redirect ($media);
+    }
+
+    function uploadcare($id,$command=null){
+        $s3=Storage::disk('s3');
+        $files=$s3->allFiles(config('filesystems.disks.s3.dir').$id);
+        $response = Response::make(config('services.urlPath.s3root').$files[0]);
+        $header=get_headers(config('services.urlPath.s3root').$files[0]);
+        $response->header('Content-Type', 'image/png');
+        //$response->header(get_headers(config('services.urlPath.s3root').$files[0]));
+        return $this->imageShop($id.'_old',$command);
+        //return redirect(route(''));
+
+    }
     function resize($url,$size){
         $sizeDim=explode ('x',$size);
         if(count ($sizeDim)>1){
@@ -42,7 +91,9 @@ class Uploadeasy
         $response->header('Content-Type', 'image/png');
         return $response;
     }
-    function imageShop($params=false,$returnurl=false){
+
+
+    function get($params=false,$returnurl=false){
 
         if($params===false){
             $current_params = Route::current()->parameters();
@@ -318,7 +369,96 @@ class Uploadeasy
 
     }
 
-    function recognize($url='1575471244739.jpg'){
+
+    public function mediaList($type,$paginate, Request $req){
+
+        $search='';
+        if(strlen ($req->input('search'))>3){
+            $search=$req->input('search');
+        }
+        $media = new \App\models\media();
+        if(strlen ($search)>3){
+            $listMedia = $media->userId(Auth::id())->search($search)->type($type)->paginate($paginate);
+        }else{
+            $listMedia = $media->userId(Auth::id())->type($type)->paginate($paginate);
+        }
+        return response()->json ($listMedia);
+    }
+    public function avatar($id,$size=256){
+        return Redirect::to(getImgPng ($id,256));
+    }
+    public function bravatar($id,$size=256){
+        return Redirect::to('https://bramatar.com/avatar/palace/'.$size.'/'.$id.'.png');
+    }
+    public function cover($id,$width=1300,$r=0.5){
+        return Redirect::to(getCoverJpg ($id,$width,$r));
+    }
+    public function aws(){
+        $aws= aws_form ();
+        $uuid = Uuid::generate()->string;
+        return response()->json (compact('aws','uuid'));
+    }
+    public function save(Request $request){
+        $request->validate([
+                               'key' => 'required',
+                           ]);
+        $uuid=$request->input('uuid');
+        $key=$request->input('key');
+        $size=$request->input('size');
+        $typeTarget=$request->input('typeTarget');
+        $originalFileName=$request->input('originalname');
+        //$filename = str_replace('.' . $request->input('extention'), '', $request->input('newname'));
+        $url=config('services.urlPath.s3root').$key;
+        $tags=[];
+        $type=$request->input('type');
+        //$tags = $this->recognize ($request->input('file'));
+        $return=array();
+        $return['url']=$url;
+        $return['uuid']=$uuid;
+        $return['tags']=$tags;
+        $media= new \App\models\media();
+        $media->uuidMedia=$uuid;
+        $media->type=$type;
+        $media->size=$size;
+        $media->idUser=Auth::id();
+        $media->dominio=$this->dominio;
+        if ($type==='video'){
+            $media->awsJobId = $this->transcode($key,$uuid);
+        }
+        if ($type==='file'){
+            $file = new files();
+            $file->dominio=$this->dominio;
+            $file->idAuthor=Auth::id ();
+            $file->typeTarget=$typeTarget;
+            $file->title=$originalFileName;
+            $file->idMedia=$uuid;
+
+            $file->save();
+        }
+        $media->filename=$originalFileName;
+        $media->key=$key;
+        $media->save();
+
+        $idMedia=$media->id;
+        $return['idMedia']=$idMedia;
+        $return['filename']=$originalFileName;
+        $return['key']=$key;
+        $return['uuid']=$uuid;
+        $return['size']=$size;
+
+        foreach ($tags as $tag){
+            $idTag = tags::addTag ($tag);
+            $idMediaTag = mediaTags::addTag($idTag,$idMedia,$tag['Confidence']);
+        }
+
+
+        //$json_tags=json_encode ($tags,true);
+        // $recordImage= media::saveMedia ($url,'',$json_tags,1);
+        //$return_json=json_encode ($return);
+        return Response::json($return);
+        //return view ('image',compact('url','tags'));
+    }
+    public function recognize($url='1575471244739.jpg'){
         $credentials= new Credentials( config ('filesystems.disks.s3.key'),config('filesystems.disks.s3.secret'));
 
         $client = new RekognitionClient([
@@ -345,5 +485,68 @@ class Uploadeasy
         }
 
         return $labels;
+    }
+    public function transcode($key,$filename){
+        $elasticTranscoder = ElasticTranscoderClient::factory(array(
+                                                                  'credentials' => array(
+                                                                      'key' => config('filesystems.disks.video.key'),
+                                                                      'secret' => config('filesystems.disks.video.secret'),
+                                                                  ),
+                                                                  'region' => config('filesystems.disks.video.region'),
+                                                                  'version' => 'latest',
+                                                              ));
+        $job = $elasticTranscoder->createJob(array(
+
+                                                 'PipelineId' => env ('AWS_ELASTIC_PIPELINE'),
+
+                                                 'OutputKeyPrefix' => config('filesystems.disks.video.dir') . $this->keysite .'/transcoded/',
+
+                                                 'Input' => array(
+                                                     'Key' => $key,
+                                                     'FrameRate' => 'auto',
+                                                     'Resolution' => 'auto',
+                                                     'AspectRatio' => 'auto',
+                                                     'Interlaced' => 'auto',
+                                                     'Container' => 'auto',
+                                                 ),
+
+                                                 'Outputs' => array(
+                                                     array(
+                                                         'Key' => $filename.'.mp4',
+                                                         'Rotate' => 'auto',
+                                                         'PresetId' => env('AWS_ELASTIC_MP4'),
+                                                     ),
+                                                     array(
+                                                         'Key' => $filename . '.webm',
+                                                         'Rotate' => 'auto',
+                                                         'PresetId' => env('AWS_ELASTIC_WEBM'),
+                                                     )
+                                                 ),
+                                             ));
+        $jobData = $job->get('Job');
+        // you can save the job ID somewhere, so you can check
+        // the status from time to time.
+        return $jobData['Id'];
+    }
+    public function getDraftFiles($schoolId,$typeTarget){
+
+        $files = files::where('dominio',$this->dominio)->where('typeTarget',$typeTarget)->where('idTarget',null)->where('idAuthor',Auth::id ())->get();
+        $ret=[];
+        foreach ($files as $x=>$file){
+            $ret[$x]['uuid']=$file->idMedia;
+            $ret[$x]['key']=$file->fileData->key;
+            $ret[$x]['filename']=$file->fileData->fileName;
+            $ret[$x]['type']=$file->fileData->type;
+            $ret[$x]['size']=$file->fileData->size;
+            $ret[$x]['id']=$file->id;
+
+        }
+        return Response::json($ret);
+    }
+    public function deleteDraftFile($schoolId,$idFile){
+
+        $file = files::where('dominio',$this->dominio)->where('id',$idFile)->where('idTarget',null)->where('idAuthor',Auth::id ())->delete();
+
+        return Response::json($file);
     }
 }
