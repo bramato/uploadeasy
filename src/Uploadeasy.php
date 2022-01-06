@@ -74,8 +74,7 @@ class Uploadeasy
             $w = $sizeDim[0];
         }
         $disk = Storage::disk(config('uploadeasy.image_disk'));
-        $media = config('filesystems.disks.'.config('uploadeasy.image_disk').'.endpoint').'/'.config('filesystems.disks.'.config('uploadeasy.image_disk').$url;
-
+        $media=config ('filesystems.disks.'.config('uploadeasy.image_disk').'.endpoint').'/'.config('filesystems.disks.'.config('uploadeasy.image_disk').'.dir').$url;
         if ($h < 1) {
             $img = Image::cache(function ($image) use ($media, $w) {
                 $image->make($media)->resize($w, null, function ($constraint) {
