@@ -16,7 +16,7 @@
         }
     ],
     "require": {
-        "php": "^7.4|^8.0",
+        "php": "^7.4|^8.0|^8.1",
         "aws/aws-sdk-php": "^3.208",
         "eddturtle/direct-upload": "^3.0",
         "illuminate/contracts": "^8.73",
