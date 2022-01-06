@@ -5,6 +5,6 @@ return [
 'image_disk' => env('UPLOADEASY_IMAGE_DISK'),
 'file_disk' => env('UPLOADEASY_FILE_DISK'),
 'video_disk' => env('UPLOADEASY_VIDEO_DISK'),
-
+'placeholder' => env('UPLOADEASY_PLACEHOLDER_IMAGE')
 
 ];

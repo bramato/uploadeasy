@@ -2,15 +2,14 @@
 
 namespace Bramato\Uploadeasy;
 
-use App\models\files;
-use App\models\mediaTags;
-use App\models\tags;
 use Aws\Credentials\Credentials;
 use Aws\ElasticTranscoder\ElasticTranscoderClient;
 use Aws\Rekognition\RekognitionClient;
+use Composer\Command\ValidateCommand;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
@@ -31,7 +30,7 @@ class Uploadeasy
         $url = $aws['url'];
         $inputs = $aws['inputsHTML'];
         $uuid = Uuid::generate()->string;
-        $media = new \App\models\media();
+        $media = new media();
 
         if (strlen($search) > 3) {
             $images = $media->userId(Auth::id())->search($search)->type('img')->paginate(18);
@@ -45,8 +44,8 @@ class Uploadeasy
 
     public function show($id)
     {
-        $s3 = Storage::disk('s3');
-        $files = $s3->allFiles(config('filesystems.disks.s3.dir').$id);
+        $disk = Storage::disk('s3');
+        $files = $disk->allFiles(config('filesystems.disks.'.config('uploadeasy.image_disk').'.dir').$id);
         $media = config('services.urlPath.s3root').$files[0];
 
         return redirect($media);
@@ -54,13 +53,13 @@ class Uploadeasy
 
     public function uploadcare($id, $command = null)
     {
-        $s3 = Storage::disk('s3');
-        $files = $s3->allFiles(config('filesystems.disks.s3.dir').$id);
+        $disk = Storage::disk('s3');
+        $files = $disk->allFiles(config('filesystems.disks.'.config('uploadeasy.image_disk').'.dir').$id);
         $response = Response::make(config('services.urlPath.s3root').$files[0]);
         $header = get_headers(config('services.urlPath.s3root').$files[0]);
         $response->header('Content-Type', 'image/png');
         //$response->header(get_headers(config('services.urlPath.s3root').$files[0]));
-        return $this->imageShop($id.'_old', $command);
+        return $this->get($id.'_old', $command);
         //return redirect(route(''));
     }
 
@@ -74,8 +73,8 @@ class Uploadeasy
             $h = 0;
             $w = $sizeDim[0];
         }
-        $s3 = Storage::disk('s3');
-        $media = config('filesystems.disks.s3.endpoint').'/'.config('filesystems.disks.s3.dir').$url;
+        $disk = Storage::disk(config('uploadeasy.image_disk'));
+        $media = config('filesystems.disks.'.config('uploadeasy.image_disk').'.endpoint').'/'.config('filesystems.disks.'.config('uploadeasy.image_disk').$url;
 
         if ($h < 1) {
             $img = Image::cache(function ($image) use ($media, $w) {
@@ -100,13 +99,15 @@ class Uploadeasy
 
     public function get($params = false, $returnurl = false)
     {
-        if ($params === false) {
-            $current_params = Route::current()->parameters();
+        $route= Route::current();
+        if (($params === false)) {
+            $current_params = $route->parameters();
         } else {
             $current_params = $params;
         }
-
+        //id immagine
         $id = $current_params['id'];
+        //command
         $command = $current_params['command'];
         $resize['status'] = false;
         $blur['status'] = false;
@@ -118,16 +119,21 @@ class Uploadeasy
         $setfill['status'] = false;
         $header = 'image/png';
 
+        //ID è un url?
         if (strpos($id, 'http') > 0) {
-            $media = file_get_contents(urldecode($id));
-            $filenameElaborated = encrypt(urldecode($id)).'-';
+            try {
+                $media = file_get_contents(urldecode($id));
+                $filenameElaborated = encrypt(urldecode($id)).'-';
+            }catch (\Exception $e){
+                Log::error('Recupero immagine (id.'.$id.')fallito:'.$e->getMessage());
+            }
         } else {
-            $s3 = Storage::disk('s3');
-            $files = $s3->allFiles('media/' . $id);
+            $disk = Storage::disk(config('uploadeasy.image_disk'));
+            $files = $disk->allFiles('media/' . $id);
             if (count($files) > 0) {
                 $media = config('services.urlPath.s3root') . $files[0];
             } else {
-                $media = 'https://procedeasy.s3-eu-west-1.amazonaws.com/media/e8df8806-489e-44b8-8dba-6ed66b7b588e/mercury.png';
+                $media = config('uploadeasy.placeholder');
             }
 
             $filenameElaborated = $id.'-';
@@ -152,7 +158,6 @@ class Uploadeasy
                     case 'blur':
                         $blur['status'] = true;
                         $blur['val'] = $a_command[1];
-
                         break;
                     case 'encode':
                         $encodeImg['status'] = true;
@@ -162,7 +167,6 @@ class Uploadeasy
                         } else {
                             $encodeImg['q'] = 90;
                         }
-
                         break;
                     case  'crop':
                         $crop['status'] = true;
@@ -270,8 +274,8 @@ class Uploadeasy
         } else {
             $filenameElaborated .= '.png';
         }
-        //DD(config('filesystems.disks.s3.dir').'encoded/'.$filenameElaborated);
-        if (! $s3->exists(config('filesystems.disks.s3.dir').'encoded/'.$filenameElaborated)) {
+        //DD(config('filesystems.disks.'.config('uploadeasy.image_disk').'encoded/'.$filenameElaborated);
+        if (! $disk->exists(config('filesystems.disks.'.config('uploadeasy.image_disk').'.dir').'encoded/'.$filenameElaborated)) {
             $img = Image::cache(function ($image) use ($crop, $setfill, $media, $resize, $greyscale, $blur, $encodeImg, $scaleCrop, $header) {
                 $media = str_replace(' ', '%20', $media);
                 $image->make($media);
@@ -344,7 +348,7 @@ class Uploadeasy
                     $image->encode('png');
                 }
             }, '120');
-            $s3->put(config('filesystems.disks.s3.dir').'encoded/'.$filenameElaborated, $img, 'public');
+            $disk->put(config('filesystems.disks.'.config('uploadeasy.image_disk').'.dir').'encoded/'.$filenameElaborated, $img, 'public');
             // create response and add encoded image data
             //$response = Response::make($img);
             // set content-type
@@ -355,15 +359,15 @@ class Uploadeasy
             //$response->header('Content-Type', $header);
         }
         if ($returnurl) {
-            return $s3->url('media/encoded/'.$filenameElaborated);
+            return $disk->url('media/encoded/'.$filenameElaborated);
         } else {
-            $img = Image::cache(function ($image) use ($s3, $filenameElaborated) {
-                $media = file_get_contents($s3->url(config('filesystems.disks.s3.dir').'encoded/'.$filenameElaborated));
+            $img = Image::cache(function ($image) use ($disk, $filenameElaborated) {
+                $media = file_get_contents($disk->url(config('filesystems.disks.'.config('uploadeasy.image_disk').'encoded/'.$filenameElaborated));
                 $image->make($media);
             }, '25000');
             $response = Response::make($img);
             $response->header('Content-Type', $header);
-            //return redirect($s3->url('media/encoded/'.$filenameElaborated));
+            //return redirect($disk->url('media/encoded/'.$filenameElaborated));
             return $response;
         }
     }
