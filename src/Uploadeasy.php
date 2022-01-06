@@ -362,7 +362,7 @@ class Uploadeasy
             return $disk->url('media/encoded/'.$filenameElaborated);
         } else {
             $img = Image::cache(function ($image) use ($disk, $filenameElaborated) {
-                $media = file_get_contents($disk->url(config('filesystems.disks.'.config('uploadeasy.image_disk').'encoded/'.$filenameElaborated));
+                $media = file_get_contents($disk->url(config('filesystems.disks.'.config('uploadeasy.image_disk').'.encoded/'.$filenameElaborated)));
                 $image->make($media);
             }, '25000');
             $response = Response::make($img);
