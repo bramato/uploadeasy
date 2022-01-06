@@ -16,7 +16,7 @@
         }
     ],
     "require": {
-        "php": "^8.0",
+        "php": "^7.4|^8.0",
         "aws/aws-sdk-php": "^3.208",
         "illuminate/contracts": "^8.73",
         "intervention/image": "^2.7",
