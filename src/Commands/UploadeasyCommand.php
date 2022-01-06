@@ -1,12 +1,12 @@
 <?php
 
-namespace VendorName\Skeleton\Commands;
+namespace Bramato\Uploadeasy\Commands;
 
 use Illuminate\Console\Command;
 
-class SkeletonCommand extends Command
+class UploadeasyCommand extends Command
 {
-    public $signature = 'skeleton';
+    public $signature = 'uploadeasy';
 
     public $description = 'My command';
 

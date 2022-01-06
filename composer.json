@@ -1,17 +1,17 @@
 {
-    "name": ":vendor_slug/:package_slug",
-    "description": ":package_description",
+    "name": "bramato/uploadeasy",
+    "description": "Upload manager. File, Video, Image.",
     "keywords": [
-        ":vendor_name",
+        "bramato",
         "laravel",
-        ":package_slug"
+        "uploadeasy"
     ],
-    "homepage": "https://github.com/:vendor_slug/:package_slug",
+    "homepage": "https://github.com/bramato/uploadeasy",
     "license": "MIT",
     "authors": [
         {
-            "name": ":author_name",
-            "email": "author@domain.com",
+            "name": "Marco Bramato",
+            "email": "marco@bramato.com",
             "role": "Developer"
         }
     ],
@@ -34,13 +34,13 @@
     },
     "autoload": {
         "psr-4": {
-            "VendorName\\Skeleton\\": "src",
-            "VendorName\\Skeleton\\Database\\Factories\\": "database/factories"
+            "Bramato\\Uploadeasy\\": "src",
+            "Bramato\\Uploadeasy\\Database\\Factories\\": "database/factories"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "VendorName\\Skeleton\\Tests\\": "tests"
+            "Bramato\\Uploadeasy\\Tests\\": "tests"
         }
     },
     "scripts": {
@@ -49,15 +49,19 @@
         "test-coverage": "vendor/bin/pest coverage"
     },
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "phpstan/extension-installer": true
+        }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "VendorName\\Skeleton\\SkeletonServiceProvider"
+                "Bramato\\Uploadeasy\\UploadeasyServiceProvider"
             ],
             "aliases": {
-                "Skeleton": "VendorName\\Skeleton\\Facades\\Skeleton"
+                "Uploadeasy": "Bramato\\Uploadeasy\\Facades\\Uploadeasy"
             }
         }
     },
