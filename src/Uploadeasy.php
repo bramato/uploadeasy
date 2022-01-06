@@ -5,7 +5,6 @@ namespace Bramato\Uploadeasy;
 use Aws\Credentials\Credentials;
 use Aws\ElasticTranscoder\ElasticTranscoderClient;
 use Aws\Rekognition\RekognitionClient;
-use Composer\Command\ValidateCommand;
 use EddTurtle\DirectUpload\Signature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -16,22 +15,22 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Facades\Image;
-use Webpatser\Uuid\Uuid;
-
 use function Pest\Laravel\get;
+
+use Webpatser\Uuid\Uuid;
 
 class Uploadeasy
 {
-    public function form($id,bool $form = false, Request $req)
+    public function form($id, bool $form = false, Request $req)
     {
         App::setLocale(Auth::user()->lingua);
         $search = '';
         if (strlen($req->input('search')) > 3) {
             $search = $req->input('search');
         }
-        $cropType=$req->query('cropType');
-        $cropWidth=$req->query('cropWidth');
-        $cropHeight=$req->query('cropHeight');
+        $cropType = $req->query('cropType');
+        $cropWidth = $req->query('cropWidth');
+        $cropHeight = $req->query('cropHeight');
 
         $aws = self::aws_form();
         $url = $aws['url'];
@@ -46,10 +45,11 @@ class Uploadeasy
         }
         $data = compact('url', 'inputs', 'uuid', 'id', 'images');
 
-        if($form===false){
+        if ($form === false) {
             return response()->json($data);
         }
-        return view ('uploadform',compact ('url','inputs','uuid','id','images','cropHeight','cropType','cropWidth'));
+
+        return view('uploadform', compact('url', 'inputs', 'uuid', 'id', 'images', 'cropHeight', 'cropType', 'cropWidth'));
     }
 
     public function show($id)
@@ -84,7 +84,7 @@ class Uploadeasy
             $w = $sizeDim[0];
         }
         $disk = Storage::disk(config('uploadeasy.image_disk'));
-        $media=config ('filesystems.disks.'.config('uploadeasy.image_disk').'.endpoint').'/'.config('filesystems.disks.'.config('uploadeasy.image_disk').'.dir').$url;
+        $media = config('filesystems.disks.'.config('uploadeasy.image_disk').'.endpoint').'/'.config('filesystems.disks.'.config('uploadeasy.image_disk').'.dir').$url;
         if ($h < 1) {
             $img = Image::cache(function ($image) use ($media, $w) {
                 $image->make($media)->resize($w, null, function ($constraint) {
@@ -108,7 +108,7 @@ class Uploadeasy
 
     public function get($params = false, $returnurl = false)
     {
-        $route= Route::current();
+        $route = Route::current();
         if (($params === false)) {
             $current_params = $route->parameters();
         } else {
@@ -133,7 +133,7 @@ class Uploadeasy
             try {
                 $media = file_get_contents(urldecode($id));
                 $filenameElaborated = encrypt(urldecode($id)).'-';
-            }catch (\Exception $e){
+            } catch (\Exception $e) {
                 Log::error('Recupero immagine (id.'.$id.')fallito:'.$e->getMessage());
             }
         } else {
@@ -167,6 +167,7 @@ class Uploadeasy
                     case 'blur':
                         $blur['status'] = true;
                         $blur['val'] = $a_command[1];
+
                         break;
                     case 'encode':
                         $encodeImg['status'] = true;
@@ -176,6 +177,7 @@ class Uploadeasy
                         } else {
                             $encodeImg['q'] = 90;
                         }
+
                         break;
                     case  'crop':
                         $crop['status'] = true;
@@ -397,22 +399,22 @@ class Uploadeasy
         return response()->json($listMedia);
     }
 
-    static function avatar($id, $size = 256)
+    public static function avatar($id, $size = 256)
     {
         return Redirect::to(self::getImgPng($id, 256));
     }
 
-    static function bravatar($id, $size = 256)
+    public static function bravatar($id, $size = 256)
     {
         return Redirect::to('https://bramatar.com/avatar/palace/'.$size.'/'.$id.'.png');
     }
 
-    static function cover($id, $width = 1300, $r = 0.5)
+    public static function cover($id, $width = 1300, $r = 0.5)
     {
         return Redirect::to(self::getCoverJpg($id, $width, $r));
     }
 
-    static function aws()
+    public static function aws()
     {
         $aws = self::aws_form();
         $uuid = Uuid::generate()->string;
@@ -579,55 +581,68 @@ class Uploadeasy
         return Response::json($file);
     }
 
-    static function getUrlImage($id,$command='/-/'){
+    public static function getUrlImage($id, $command = '/-/')
+    {
         $image = new self();
-        $image->get(['id'=>$id,'command'=>$command],true);
+        $image->get(['id' => $id,'command' => $command], true);
     }
-    static function getIconJpg($id,$bg='ffffff'){
-        return self::getUrlImage($id,'/-/scale_crop/80x80/-/setfill/'.$bg.'/-/format/jpeg/');
+
+    public static function getIconJpg($id, $bg = 'ffffff')
+    {
+        return self::getUrlImage($id, '/-/scale_crop/80x80/-/setfill/'.$bg.'/-/format/jpeg/');
     }
-    static function getIconPng($id,$size=126){
-        return self::getUrlImage($id,'/-/scale_crop/'.$size.'x'.$size.'/-/format/png/');
+
+    public static function getIconPng($id, $size = 126)
+    {
+        return self::getUrlImage($id, '/-/scale_crop/'.$size.'x'.$size.'/-/format/png/');
     }
-    static function getImgPng($id,$size=126){
-        return self::getUrlImage($id,'/-/resize/'.$size.'/-/format/png/');
+
+    public static function getImgPng($id, $size = 126)
+    {
+        return self::getUrlImage($id, '/-/resize/'.$size.'/-/format/png/');
     }
-    static function getCoverJpg($id,$x=400,$r=0.5,$command=['grayscale'=>false]){
-        $y= (int)($x * $r);
-        $commandUrl='/-/scale_crop/'.$x.'x'.$y.'/center/-/format/jpg/';
-        if($command['grayscale']){
-            $commandUrl=$commandUrl.'-/grayscale/';
+
+    public static function getCoverJpg($id, $x = 400, $r = 0.5, $command = ['grayscale' => false])
+    {
+        $y = (int)($x * $r);
+        $commandUrl = '/-/scale_crop/'.$x.'x'.$y.'/center/-/format/jpg/';
+        if ($command['grayscale']) {
+            $commandUrl = $commandUrl.'-/grayscale/';
         }
-        return self::getUrlImage($id,$commandUrl);
+
+        return self::getUrlImage($id, $commandUrl);
     }
 
     /**
      * @param $image
      * @return array|mixed|string|string[]
      */
-    static function clearIdImage($image){
-        $tmp=explode('/-/',$image);
-        $img=$tmp[0];
-        $img= str_replace(array('https://www.procedeasy.com/image/','http://127.0.0.1:8000/image/','/'), '', $img);
+    public static function clearIdImage($image)
+    {
+        $tmp = explode('/-/', $image);
+        $img = $tmp[0];
+        $img = str_replace(['https://www.procedeasy.com/image/','http://127.0.0.1:8000/image/','/'], '', $img);
+
         return $img;
     }
 
     /**
      * @return array
      */
-    static function aws_form(){
+    public static function aws_form()
+    {
         $disk = config('uploadeasy.image_disk');
         $upload = new Signature(
             config('filesystems.disks.'. $disk .'.key'),
-            config ('filesystems.disks.'. $disk .'.secret'),
+            config('filesystems.disks.'. $disk .'.secret'),
             config('filesystems.disks.'. $disk .'.bucket'),
             config('filesystems.disks.'. $disk .'.region'),
             ['acl' => 'public-read']
         );
-        $url=$upload->getFormUrl();
-        $inputsHTML=$upload->getFormInputsAsHtml();
-        $inputs=$upload->getFormInputs();
-        return ['url'=>$url, 'inputsHTML'=>$inputsHTML, 'inputs'=>$inputs,'AWSAccessKeyId'=>config('filesystems.disks.'. $disk .'.key'),'bucket'=>config('filesystems.disks.'. $disk .'.bucket')];
-    }
+        $url = $upload->getFormUrl();
+        $inputsHTML = $upload->getFormInputsAsHtml();
+        $inputs = $upload->getFormInputs();
 
+        return ['url' => $url, 'inputsHTML' => $inputsHTML, 'inputs' => $inputs,'AWSAccessKeyId' => config('filesystems.disks.'. $disk .'.key'),'bucket' => config('filesystems.disks.'. $disk .'.bucket')];
+    }
 }
